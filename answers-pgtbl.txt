@@ -1,0 +1,7 @@
+1. Other system calls that could use a shared read-only page
+
+The uptime system call could be accelerated by mapping a read-only page that contains a kernel-maintained tick count into each process. A user-space helper could read the count without executing ecall. A getppid-style system call could use the same method by storing the parent PID in the per-process shared page and updating it when the parent relationship changes. This optimization is suitable for small values that users only need to read and that the kernel can keep current safely.
+
+2. Explanation of the vmprint output
+
+The indentation shows the three levels of the Sv39 page table. Each line prints a valid PTE, and entries without R, W, or X point to a lower-level page-table page. Page 0 contains the init program's code and data. Page 1 is the inaccessible guard page below the user stack, so a process running in user mode cannot read or write it because its PTE does not have PTE_U. Page 2 contains the initial user stack. The third-to-last page below MAXVA is USYSCALL; it is mapped read-only for user mode and contains the struct usyscall holding the process PID. The last two pages are the trapframe and trampoline mappings.
