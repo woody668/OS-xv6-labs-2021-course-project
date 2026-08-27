@@ -4,8 +4,7 @@
 #include "kernel/fs.h"
 #include "kernel/fcntl.h"
 
-static char *
-basename(char *path)
+static char *basename(char *path)
 {
   char *name = path + strlen(path);
   while(name > path && name[-1] != '/')
@@ -13,8 +12,7 @@ basename(char *path)
   return name;
 }
 
-static void
-find(char *path, char *target)
+static void find(char *path, char *target)
 {
   char buf[512];
   char *name;
@@ -60,8 +58,7 @@ find(char *path, char *target)
   close(fd);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
   if(argc != 3){
     fprintf(2, "usage: find path name\n");

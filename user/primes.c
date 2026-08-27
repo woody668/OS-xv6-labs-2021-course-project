@@ -2,8 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-static void
-sieve(int input)
+static void sieve(int input)
 {
   int prime;
   if(read(input, &prime, sizeof(prime)) != sizeof(prime)){
@@ -46,8 +45,7 @@ sieve(int input)
   exit(0);
 }
 
-int
-main(void)
+int main(void)
 {
   int input[2];
   if(pipe(input) < 0){

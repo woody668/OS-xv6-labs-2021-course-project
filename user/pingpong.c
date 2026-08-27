@@ -2,8 +2,7 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-int
-main(void)
+int main(void)
 {
   int parent_to_child[2];
   int child_to_parent[2];

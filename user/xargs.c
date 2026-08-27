@@ -3,8 +3,7 @@
 #include "kernel/param.h"
 #include "user/user.h"
 
-static void
-run(char *command, char **args)
+static void run(char *command, char **args)
 {
   int pid = fork();
   if(pid < 0){
@@ -19,8 +18,7 @@ run(char *command, char **args)
   wait(0);
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
   char line[512];
   char *args[MAXARG];
