@@ -23,10 +23,24 @@ struct {
   struct run *freelist;
 } kmem;
 
-void
-kinit()
+struct {
+  struct spinlock lock;
+  int count[(PHYSTOP - KERNBASE) / PGSIZE];
+} krefs;
+
+static int refindex(uint64 pa)
+{
+  if(pa < KERNBASE || pa >= PHYSTOP)
+    panic("refindex");
+  return (pa - KERNBASE) / PGSIZE;
+}
+
+void kinit()
 {
   initlock(&kmem.lock, "kmem");
+  initlock(&krefs.lock, "krefs");
+  for(uint64 pa = PGROUNDUP((uint64)end); pa < PHYSTOP; pa += PGSIZE)
+    krefs.count[refindex(pa)] = 1;
   freerange(end, (void*)PHYSTOP);
 }
 
@@ -43,15 +57,22 @@ freerange(void *pa_start, void *pa_end)
 // which normally should have been returned by a
 // call to kalloc().  (The exception is when
 // initializing the allocator; see kinit above.)
-void
-kfree(void *pa)
+void kfree(void *pa)
 {
   struct run *r;
 
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
-  // Fill with junk to catch dangling refs.
+  acquire(&krefs.lock);
+  int refs = --krefs.count[refindex((uint64)pa)];
+  release(&krefs.lock);
+  if(refs < 0)
+    panic("kfree refs");
+  if(refs > 0)
+    return;
+
+  // Fill with junk only after the final reference disappears.
   memset(pa, 1, PGSIZE);
 
   r = (struct run*)pa;
@@ -65,8 +86,7 @@ kfree(void *pa)
 // Allocate one 4096-byte page of physical memory.
 // Returns a pointer that the kernel can use.
 // Returns 0 if the memory cannot be allocated.
-void *
-kalloc(void)
+void *kalloc(void)
 {
   struct run *r;
 
@@ -76,7 +96,29 @@ kalloc(void)
     kmem.freelist = r->next;
   release(&kmem.lock);
 
-  if(r)
+  if(r){
     memset((char*)r, 5, PGSIZE); // fill with junk
+    acquire(&krefs.lock);
+    krefs.count[refindex((uint64)r)] = 1;
+    release(&krefs.lock);
+  }
   return (void*)r;
+}
+
+void krefinc(void *pa)
+{
+  acquire(&krefs.lock);
+  int index = refindex((uint64)pa);
+  if(krefs.count[index] < 1)
+    panic("krefinc");
+  krefs.count[index]++;
+  release(&krefs.lock);
+}
+
+int krefcount(void *pa)
+{
+  acquire(&krefs.lock);
+  int refs = krefs.count[refindex((uint64)pa)];
+  release(&krefs.lock);
+  return refs;
 }
