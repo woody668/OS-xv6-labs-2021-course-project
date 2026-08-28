@@ -14,20 +14,18 @@ struct entry {
   struct entry *next;
 };
 struct entry *table[NBUCKET];
+pthread_mutex_t locks[NBUCKET];
 int keys[NKEYS];
 int nthread = 1;
 
-
-double
-now()
+double now()
 {
  struct timeval tv;
  gettimeofday(&tv, 0);
  return tv.tv_sec + tv.tv_usec / 1000000.0;
 }
 
-static void 
-insert(int key, int value, struct entry **p, struct entry *n)
+static void insert(int key, int value, struct entry **p, struct entry *n)
 {
   struct entry *e = malloc(sizeof(struct entry));
   e->key = key;
@@ -36,11 +34,11 @@ insert(int key, int value, struct entry **p, struct entry *n)
   *p = e;
 }
 
-static 
-void put(int key, int value)
+static void put(int key, int value)
 {
   int i = key % NBUCKET;
 
+  pthread_mutex_lock(&locks[i]);
   // is the key already present?
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
@@ -54,25 +52,24 @@ void put(int key, int value)
     // the new is new.
     insert(key, value, &table[i], table[i]);
   }
-
+  pthread_mutex_unlock(&locks[i]);
 }
 
-static struct entry*
-get(int key)
+static struct entry *get(int key)
 {
   int i = key % NBUCKET;
 
-
+  pthread_mutex_lock(&locks[i]);
   struct entry *e = 0;
   for (e = table[i]; e != 0; e = e->next) {
     if (e->key == key) break;
   }
 
+  pthread_mutex_unlock(&locks[i]);
   return e;
 }
 
-static void *
-put_thread(void *xa)
+static void *put_thread(void *xa)
 {
   int n = (int) (long) xa; // thread number
   int b = NKEYS/nthread;
@@ -84,8 +81,7 @@ put_thread(void *xa)
   return NULL;
 }
 
-static void *
-get_thread(void *xa)
+static void *get_thread(void *xa)
 {
   int n = (int) (long) xa; // thread number
   int missing = 0;
@@ -98,8 +94,7 @@ get_thread(void *xa)
   return NULL;
 }
 
-int
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
   pthread_t *tha;
   void *value;
@@ -117,6 +112,8 @@ main(int argc, char *argv[])
   for (int i = 0; i < NKEYS; i++) {
     keys[i] = random();
   }
+  for(int i = 0; i < NBUCKET; i++)
+    assert(pthread_mutex_init(&locks[i], NULL) == 0);
 
   //
   // first the puts

@@ -1,0 +1,3 @@
+With two threads, both can choose keys that hash to the same bucket and read the same old bucket head. Each thread searches the list, finds that its key is absent, and creates a new entry whose next pointer is the old head. If thread 0 stores its entry in table[i] and thread 1 then stores its own entry in table[i], thread 1 overwrites the head written by thread 0. Thread 0's new entry is no longer reachable, so the later get phase reports that key as missing.
+
+I use one mutex for each hash bucket. A put locks only the bucket selected by the key, performs the search and insertion or update as one critical section, and then unlocks it. This prevents lost updates within a bucket while allowing puts to different buckets to proceed in parallel.
