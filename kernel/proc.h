@@ -101,6 +101,11 @@ struct proc {
   uint64 sz;                   // Size of process memory (bytes)
   pagetable_t pagetable;       // User page table
   struct trapframe *trapframe; // data page for trampoline.S
+  struct trapframe *alarm_trapframe; // registers saved while an alarm runs
+  uint64 alarm_handler;        // user alarm handler address
+  int alarm_interval;          // timer ticks between alarms
+  int alarm_ticks;             // ticks since the previous alarm
+  int alarm_active;            // prevent nested alarm handlers
   struct context context;      // swtch() here to run process
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory

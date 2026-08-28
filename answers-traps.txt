@@ -1,0 +1,11 @@
+1. Function arguments are passed in registers a0 through a7. In main, the value 13 is stored in a2 before the call to printf.
+
+2. There is no call instruction to either f or g in main. The compiler inlined both functions and constant-folded f(8) + 1 to 12, which is loaded directly into a1.
+
+3. printf is located at address 0x630.
+
+4. The jalr instruction is at address 0x34, so ra contains 0x38 immediately after the jump.
+
+5. The output is "He110 World". On this little-endian machine, i is stored as bytes 72 6c 64 00, which form "rld". On a big-endian machine, i should be 0x726c6400 to produce the same byte sequence in memory. The value 57616 does not need to change because integer values are independent of byte order once loaded into a register.
+
+6. The value printed after y= is unspecified. The format string asks printf for a second integer argument, but the call provides only one, so printf reads whatever value happens to remain in the argument register or save area.
