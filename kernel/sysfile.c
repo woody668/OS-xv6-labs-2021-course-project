@@ -6,6 +6,7 @@
 
 #include "types.h"
 #include "riscv.h"
+#include "memlayout.h"
 #include "defs.h"
 #include "param.h"
 #include "stat.h"
@@ -102,6 +103,55 @@ sys_close(void)
   myproc()->ofile[fd] = 0;
   fileclose(f);
   return 0;
+}
+
+uint64 sys_mmap(void)
+{
+  uint64 requested, length, offset;
+  int prot, flags, fd;
+  struct file *f;
+  struct proc *p = myproc();
+
+  if(argaddr(0, &requested) < 0 || argaddr(1, &length) < 0 ||
+     argint(2, &prot) < 0 || argint(3, &flags) < 0 ||
+     argint(4, &fd) < 0 || argaddr(5, &offset) < 0)
+    return -1;
+  if(length == 0 || offset % PGSIZE != 0 ||
+     (flags != MAP_SHARED && flags != MAP_PRIVATE) ||
+     argfd(4, 0, &f) < 0 || f->type != FD_INODE)
+    return -1;
+  if((prot & PROT_READ) && !f->readable)
+    return -1;
+  if(flags == MAP_SHARED && (prot & PROT_WRITE) && !f->writable)
+    return -1;
+
+  struct vma *slot = 0;
+  uint64 addr = 1L << 30;
+  for(int i = 0; i < NVMA; i++){
+    if(p->vmas[i].file == 0 && slot == 0)
+      slot = &p->vmas[i];
+    if(p->vmas[i].file && p->vmas[i].addr + p->vmas[i].length > addr)
+      addr = PGROUNDUP(p->vmas[i].addr + p->vmas[i].length);
+  }
+  length = PGROUNDUP(length);
+  if(slot == 0 || addr + length < addr || addr + length >= TRAPFRAME)
+    return -1;
+
+  slot->addr = addr;
+  slot->length = length;
+  slot->offset = offset;
+  slot->prot = prot;
+  slot->flags = flags;
+  slot->file = filedup(f);
+  return addr;
+}
+
+uint64 sys_munmap(void)
+{
+  uint64 addr, length;
+  if(argaddr(0, &addr) < 0 || argaddr(1, &length) < 0)
+    return -1;
+  return vmaunmap(myproc(), addr, length);
 }
 
 uint64
