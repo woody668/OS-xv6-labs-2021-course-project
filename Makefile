@@ -299,14 +299,14 @@ QEMUOPTS += -device e1000,netdev=net0,bus=pcie.0
 endif
 
 qemu: $K/kernel fs.img
-	$(QEMU) $(QEMUOPTS)
+	$(QEMU) $(QEMUOPTS) $(QEMUEXTRA)
 
 .gdbinit: .gdbinit.tmpl-riscv
 	sed "s/:1234/:$(GDBPORT)/" < $^ > $@
 
 qemu-gdb: $K/kernel .gdbinit fs.img
 	@echo "*** Now run 'gdb' in another window." 1>&2
-	$(QEMU) $(QEMUOPTS) -S $(QEMUGDB)
+	$(QEMU) $(QEMUOPTS) $(QEMUEXTRA) -S $(QEMUGDB)
 
 ifeq ($(LAB),net)
 # try to generate a unique port for the echo server
